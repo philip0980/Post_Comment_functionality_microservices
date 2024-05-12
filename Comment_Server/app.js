@@ -2,6 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
+import { randomBytes } from "crypto";
 
 const app = express();
 dotenv.config();
@@ -11,31 +12,44 @@ const port = process.env.PORT;
 app.use(express.json());
 app.use(cors({ origin: "http://localhost:5173" }));
 
-// Schema for comment
-
-const schema = mongoose.Schema({
-  comment: {
-    type: String,
-  },
+// Define Comment schema
+const commentSchema = new mongoose.Schema({
+  postId: String,
+  commentId: String,
+  content: String,
 });
 
-const Comment = mongoose.model("comment", schema);
+// Define Comment model
+const Comment = mongoose.model("Comment", commentSchema);
 
-app.get("/comment", async (req, res) => {
+app.get("/post/:id/comment", async (req, res) => {
   try {
-    const comment = await Comment.find();
-    res.json({ comment: comment });
+    const comments = await Comment.find({ postId: req.params.id });
+    res.send(comments);
   } catch (error) {
     console.log(error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-app.post("/comment", async (req, res) => {
-  const { comment } = req.body;
-  const newComment = Comment({ comment });
-  await newComment.save();
-  res.status(201).json({ message: "Comment created", comment: newComment });
+app.post("/post/:id/comment", async (req, res) => {
+  try {
+    const commentId = randomBytes(4).toString("hex");
+    const { comment } = req.body;
+
+    const newComment = new Comment({
+      postId: req.params.id,
+      commentId,
+      content: comment,
+    });
+
+    await newComment.save();
+
+    res.status(201).json({ message: "Comment created", comment: newComment });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
 mongoose
